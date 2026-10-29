@@ -49,4 +49,4 @@ PIN-locked alert when a program behaves like a dropper or an infostealer.
 - A very exotic browser whose process is not in the trusted list may cause a false
   positive when it reads its own cookies.
 
-[1.0.0]: https://github.com/redaot/worm-crawler-defender/releases/tag/v1.0.0
+[1.0.0]: https://github.com/REDAOT/worm-crawler-defender/releases/tag/v1.0.0

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # =====================================================================
-#  Worm-Crawler Defender pentru Linux - instalare (made by REDAOT)
-#  Detecteaza singur distributia si sistemul de init si face totul in spate.
-#  Ruleaza:  sudo ./install.sh     (sau: ./install.sh  -> cere singur sudo)
+#  Worm-Crawler Defender for Linux - installer (made by REDAOT)
+#  Auto-detects the distribution and init system, and does everything.
+#  Run:  sudo ./install.sh     (or: ./install.sh  -> it asks for sudo itself)
 # =====================================================================
 set -u
 SRC="$(cd "$(dirname "$0")" && pwd)/worm-crawler-defender"
@@ -12,65 +12,64 @@ UNITDIR="/etc/systemd/system"
 
 # --- auto-sudo ---
 if [ "$(id -u)" -ne 0 ]; then
-    echo "Am nevoie de drepturi de administrator (sudo)..."
+    echo "Administrator rights are required (sudo)..."
     exec sudo -- "$0" "$@"
 fi
 
+# version from the library
+. "$SRC/wcd-lib.sh"
+
 echo "=================================================="
-echo "   WORM-CRAWLER DEFENDER (Linux)  -  made by REDAOT"
+echo "   WORM-CRAWLER DEFENDER $WCD_VERSION (Linux)  -  made by REDAOT"
 echo "=================================================="
 
-# --- 1. detectare mediu ---
-DISTRO="necunoscut"
+# --- 1. detect environment ---
+DISTRO="unknown"
 [ -r /etc/os-release ] && . /etc/os-release && DISTRO="${PRETTY_NAME:-$ID}"
 if pidof systemd >/dev/null 2>&1 || [ -d /run/systemd/system ]; then INIT="systemd"; else INIT="other"; fi
-echo "[i] Distributie : $DISTRO"
-echo "[i] Init        : $INIT"
+echo "[i] Distribution : $DISTRO"
+echo "[i] Init         : $INIT"
 
-# dependinte minime
-command -v bash >/dev/null || { echo "EROARE: lipseste bash."; exit 1; }
+command -v bash >/dev/null || { echo "ERROR: bash is missing."; exit 1; }
 if ! command -v python3 >/dev/null && ! command -v openssl >/dev/null; then
-    echo "EROARE: am nevoie de python3 SAU openssl pentru PIN."
-    echo "        Instaleaza unul: ex. 'sudo apt install python3' sau 'sudo dnf install python3'."
+    echo "ERROR: python3 OR openssl is required for the PIN."
+    echo "       Install one, e.g. 'sudo apt install python3' or 'sudo dnf install python3'."
     exit 1
 fi
-command -v ip   >/dev/null || echo "[!] 'ip' lipseste; blocarea retelei se bazeaza pe nmcli daca exista."
-command -v nmcli >/dev/null && echo "[i] Retea       : NetworkManager (nmcli)" || echo "[i] Retea       : prin 'ip link'"
+command -v ip   >/dev/null || echo "[!] 'ip' is missing; network blocking relies on nmcli if present."
+command -v nmcli >/dev/null && echo "[i] Network      : NetworkManager (nmcli)" || echo "[i] Network      : via 'ip link'"
 command -v zenity >/dev/null || command -v kdialog >/dev/null || command -v notify-send >/dev/null || command -v xmessage >/dev/null \
-    || echo "[!] Niciun instrument grafic de alerta (zenity/kdialog/notify-send/xmessage). Alertele vor aparea doar in terminal ('wall')."
+    || echo "[!] No graphical alert tool (zenity/kdialog/notify-send/xmessage). Alerts will only appear in the terminal ('wall')."
 
-# --- 2. PIN (folder separat, supravietuieste stergerii /opt) ---
-. "$SRC/wcd-lib.sh"
+# --- 2. PIN (separate folder, survives deletion of /opt) ---
 wcd_dirs
 if wcd_pin_exists; then
-    echo; echo "Worm-Crawler Defender e deja instalat. Pentru reinstalare e nevoie de PIN."
-    if ! wcd_pin_prompt "reinstalare"; then echo "PIN gresit. Instalarea a fost anulata."; exit 1; fi
-    read -r -p "Vrei sa schimbi PIN-ul? (d/N): " r
-    case "$r" in [dDyY]*) wcd_pin_set ;; esac
-    # opreste varianta veche ca sa poata fi inlocuita
+    echo; echo "Worm-Crawler Defender is already installed. Reinstall requires the PIN."
+    if ! wcd_pin_prompt "reinstall"; then echo "Wrong PIN. Installation cancelled."; exit 1; fi
+    read -r -p "Do you want to change the PIN? (y/N): " r
+    case "$r" in [yY]*) wcd_pin_set ;; esac
     date +%s > "$AUTH_FLAG"
     [ "$INIT" = systemd ] && systemctl stop worm-crawler-defender.service >/dev/null 2>&1
 else
-    echo; echo "Alege un PIN din 4 cifre. Il vei folosi ca sa deblochezi internetul,"
-    echo "sa opresti protectia si sa dezinstalezi programul."
+    echo; echo "Choose a 4-digit PIN. You will use it to unlock the internet,"
+    echo "stop the protection, and uninstall the program."
     wcd_pin_set || exit 1
 fi
 
-# --- 3. copiere fisiere ---
+# --- 3. copy files ---
 mkdir -p "$PROG_DIR"
 cp -f "$SRC"/wcd-*.sh "$PROG_DIR"/ 2>/dev/null
 cp -f "$SRC"/wormcrawler.png "$PROG_DIR"/ 2>/dev/null
 chmod 755 "$PROG_DIR"/wcd-*.sh
 chown -R root:root "$PROG_DIR"
-echo "[OK] Fisiere copiate in $PROG_DIR"
+echo "[OK] Files copied to $PROG_DIR"
 
-# comenzi scurte
 ln -sf "$PROG_DIR/wcd-unlock.sh"  "$BINDIR/wcd-unlock"
 ln -sf "$PROG_DIR/wcd-protect.sh" "$BINDIR/wcd-protect"
 ln -sf "$PROG_DIR/wcd-test.sh"    "$BINDIR/wcd-test"
-echo "[OK] Comenzi: wcd-unlock, wcd-protect, wcd-test"
+echo "[OK] Commands: wcd-unlock, wcd-protect, wcd-test"
 
-# --- 4. pornire automata ---
+# --- 4. automatic start ---
 if [ "$INIT" = systemd ]; then
     cat > "$UNITDIR/worm-crawler-defender.service" <<EOF
 [Unit]
@@ -86,14 +85,14 @@ WantedBy=multi-user.target
 EOF
     cat > "$UNITDIR/wcd-watchdog.service" <<EOF
 [Unit]
-Description=Worm-Crawler Defender - verificare automata (made by REDAOT)
+Description=Worm-Crawler Defender - watchdog (made by REDAOT)
 [Service]
 Type=oneshot
 ExecStart=$PROG_DIR/wcd-watchdog.sh
 EOF
     cat > "$UNITDIR/wcd-watchdog.timer" <<EOF
 [Unit]
-Description=Worm-Crawler Defender - verificare la fiecare minut (made by REDAOT)
+Description=Worm-Crawler Defender - check every minute (made by REDAOT)
 [Timer]
 OnBootSec=60
 OnUnitActiveSec=60
@@ -107,12 +106,12 @@ EOF
     rm -f "$AUTH_FLAG"
     sleep 3
     if systemctl is-active --quiet worm-crawler-defender.service; then
-        echo "[OK] Serviciul RULEAZA (systemd). Jurnal: $LOG_FILE"
+        echo "[OK] The service is RUNNING (systemd). Log: $LOG_FILE"
     else
-        echo "[!] Serviciul nu a pornit. Verifica: systemctl status worm-crawler-defender"
+        echo "[!] The service did not start. Check: systemctl status worm-crawler-defender"
     fi
 else
-    # fallback fara systemd: supervizor la boot + watchdog in cron
+    # fallback without systemd: boot supervisor + watchdog in cron
     SUP="$PROG_DIR/wcd-supervise.sh"
     cat > "$SUP" <<EOF
 #!/usr/bin/env bash
@@ -124,15 +123,15 @@ EOF
       echo "* * * * * $PROG_DIR/wcd-watchdog.sh >/dev/null 2>&1" ) | crontab -
     nohup "$SUP" >/dev/null 2>&1 &
     rm -f "$AUTH_FLAG"
-    echo "[OK] Pornire prin cron @reboot + supervizor (sistem fara systemd)."
+    echo "[OK] Started via cron @reboot + supervisor (system without systemd)."
 fi
 
-# scurtatura grafica (optional, daca exista mediu desktop)
+# graphical shortcut (optional, if a desktop environment is present)
 if [ -d /usr/share/applications ]; then
     cat > /usr/share/applications/worm-crawler-defender.desktop <<EOF
 [Desktop Entry]
 Type=Application
-Name=Worm-Crawler Defender - Deblocheaza internetul
+Name=Worm-Crawler Defender - Unlock Internet
 Exec=pkexec $PROG_DIR/wcd-unlock.sh
 Icon=$PROG_DIR/wormcrawler.png
 Terminal=true
@@ -141,6 +140,6 @@ EOF
 fi
 
 echo
-echo "Gata. Testeaza cu:   sudo wcd-test"
-echo "Stare:               wcd-protect status"
-echo "made by REDAOT"
+echo "Done. Test with:   sudo wcd-test"
+echo "Status:            wcd-protect status"
+echo "made by REDAOT  -  $WCD_VERSION"

@@ -1,39 +1,39 @@
 #!/usr/bin/env bash
-# Worm-Crawler Defender - opreste / porneste protectia, schimba PIN. made by REDAOT
-#   wcd-protect stop      (cere PIN)
+# Worm-Crawler Defender - stop / start protection, change PIN. made by REDAOT
+#   wcd-protect stop      (asks for PIN)
 #   wcd-protect start
-#   wcd-protect pin       (cere PIN vechi, apoi seteaza unul nou)
+#   wcd-protect pin       (asks for the old PIN, then sets a new one)
 #   wcd-protect status
 set -u
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$DIR/wcd-lib.sh"
 ACT="${1:-status}"
-if [ "$ACT" != status ] && [ "$(id -u)" -ne 0 ]; then echo "Ruleaza cu: sudo wcd-protect $ACT"; exit 1; fi
+if [ "$ACT" != status ] && [ "$(id -u)" -ne 0 ]; then echo "Run with: sudo wcd-protect $ACT"; exit 1; fi
 
 case "$ACT" in
     stop)
-        if ! wcd_pin_prompt "oprirea protectiei"; then echo "PIN gresit. Protectia ramane pornita."; exit 1; fi
+        if ! wcd_pin_prompt "stopping the protection"; then echo "Wrong PIN. The protection stays on."; exit 1; fi
         wcd_dirs; date +%s > "$AUTH_FLAG"
         have systemctl && systemctl stop worm-crawler-defender.service >/dev/null 2>&1
-        wcd_log "Protectie OPRITA de utilizator (PIN corect)."
-        echo "Protectia e OPRITA. Porneste automat la urmatorul boot, sau cu: sudo wcd-protect start"
+        wcd_log "Protection STOPPED by the user (correct PIN)."
+        echo "Protection is OFF. It starts again at the next boot, or with: sudo wcd-protect start"
         ;;
     start)
         rm -f "$AUTH_FLAG"
         have systemctl && systemctl start worm-crawler-defender.service >/dev/null 2>&1
-        wcd_log "Protectie PORNITA de utilizator."
-        echo "Protectia e PORNITA."
+        wcd_log "Protection STARTED by the user."
+        echo "Protection is ON."
         ;;
     pin)
-        if ! wcd_pin_prompt "schimbarea PIN-ului"; then echo "PIN gresit. PIN-ul nu a fost schimbat."; exit 1; fi
-        wcd_pin_set && wcd_log "PIN schimbat de utilizator."
+        if ! wcd_pin_prompt "changing the PIN"; then echo "Wrong PIN. The PIN was not changed."; exit 1; fi
+        wcd_pin_set && wcd_log "PIN changed by the user."
         ;;
     status)
-        if [ -f "$AUTH_FLAG" ]; then echo "Protectie: OPRITA (cu PIN)"
-        elif have systemctl && systemctl is-active --quiet worm-crawler-defender.service; then echo "Protectie: ACTIVA"
-        else echo "Protectie: NU RULEAZA"; fi
-        [ -f "$BLOCK_FLAG" ] && echo "Internet: BLOCAT (deblocheaza cu: sudo wcd-unlock)" || echo "Internet: liber"
+        if [ -f "$AUTH_FLAG" ]; then echo "Protection: STOPPED (with PIN)"
+        elif have systemctl && systemctl is-active --quiet worm-crawler-defender.service; then echo "Protection: ACTIVE"
+        else echo "Protection: NOT RUNNING"; fi
+        [ -f "$BLOCK_FLAG" ] && echo "Internet: BLOCKED (unlock with: sudo wcd-unlock)" || echo "Internet: free"
         ;;
-    *) echo "Foloseste: wcd-protect {stop|start|pin|status}"; exit 1 ;;
+    *) echo "Usage: wcd-protect {stop|start|pin|status}"; exit 1 ;;
 esac
 echo "made by REDAOT"

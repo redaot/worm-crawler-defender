@@ -1,7 +1,7 @@
 # Worm-Crawler Defender
 
 **O „capcană” comportamentală ușoară împotriva dropperelor și a infostealerelor, pentru Windows și Linux.**
-*made by REDAOT*
+*made by REDAOT — v1.0.0*
 
 🇬🇧 English version: [README.md](README.md)
 
@@ -121,11 +121,11 @@ Windows 10 sau 11, cont de administrator, Windows Defender activ.
 
 ### Instalare
 1. Dezarhivează `WormCrawler-Defender.zip`.
-2. Dublu-click pe **`1_Instaleaza.cmd`** și acceptă cererea de administrator.
+2. Dublu-click pe **`1_Install.cmd`** și acceptă cererea de administrator.
 3. Alege un PIN din 4 cifre.
 4. Rulează **`2_Test.cmd`** — pornește o comandă codificată inofensivă; internetul
    ar trebui să se blocheze și alerta să apară în câteva secunde.
-5. Deblochează cu scurtătura de pe Desktop **„Worm-Crawler Defender - Reporneste internetul”** + PIN.
+5. Deblochează cu scurtătura de pe Desktop **„Worm-Crawler Defender - Unlock Internet”** + PIN.
 
 ### Utilizare zilnică
 O **iconiță în system tray** arată starea (activ / internet blocat / oprit / nu răspunde).
@@ -136,14 +136,14 @@ Oprește protecția (PIN), Pornește protecția, Schimbă PIN-ul.
 | Task | Rulează ca | Când | Rol |
 |------|-----------|------|-----|
 | `WormCrawler` | SYSTEM | la boot, continuu | paza propriu-zisă |
-| `WormCrawler-Verificare` | SYSTEM | logare + la fiecare minut | watchdog |
-| `WormCrawler-Alerta` | utilizatorul logat | la alertă | afișează fereastra de alertă |
+| `WormCrawler-Watchdog` | SYSTEM | logare + la fiecare minut | watchdog |
+| `WormCrawler-Alert` | utilizatorul logat | la alertă | afișează fereastra de alertă |
 | `WormCrawler-Tray` | utilizatorul logat | la logare | iconița din tray |
 
 Fișierele stau în `C:\ProgramData\WormCrawler`; jurnalul e `wormcrawler.log`.
 
 ### Dezinstalare
-`3_Dezinstaleaza.cmd` (cere PIN-ul).
+`3_Uninstall.cmd` (cere PIN-ul).
 
 ---
 

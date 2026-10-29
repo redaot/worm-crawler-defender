@@ -1,7 +1,7 @@
 # Worm-Crawler Defender
 
 **A lightweight behavioural tripwire against droppers and infostealers, for Windows and Linux.**
-*made by REDAOT*
+*made by REDAOT — v1.0.0*
 
 🇷🇴 Versiunea în română: [README.ro.md](README.ro.md)
 
@@ -110,29 +110,29 @@ Windows 10 or 11, an administrator account, and Windows Defender enabled.
 
 ### Install
 1. Unzip `WormCrawler-Defender.zip`.
-2. Double-click **`1_Instaleaza.cmd`** and accept the administrator prompt.
+2. Double-click **`1_Install.cmd`** and accept the administrator prompt.
 3. Choose a 4-digit PIN.
 4. Run **`2_Test.cmd`** — it launches a harmless encoded command; the internet
    should block and the alert should appear within seconds.
-5. Unlock with the Desktop shortcut **"Worm-Crawler Defender - Reporneste internetul"** + PIN.
+5. Unlock with the Desktop shortcut **"Worm-Crawler Defender - Unlock Internet"** + PIN.
 
 ### Everyday use
 A **system-tray icon** shows the state (active / internet blocked / stopped / not responding).
-Right-click it for: Status, Open log, Unlock internet (PIN), Stop protection (PIN),
-Start protection, Change PIN.
+Right-click it for: Status, Open log, Unlock Internet (PIN), Stop Protection (PIN),
+Start Protection, Change PIN.
 
 ### Components (scheduled tasks)
 | Task | Runs as | When | Role |
 |------|---------|------|------|
 | `WormCrawler` | SYSTEM | at boot, continuous | the guard itself |
-| `WormCrawler-Verificare` | SYSTEM | logon + every minute | watchdog |
-| `WormCrawler-Alerta` | logged-in user | on alert | shows the alert window |
+| `WormCrawler-Watchdog` | SYSTEM | logon + every minute | watchdog |
+| `WormCrawler-Alert` | logged-in user | on alert | shows the alert window |
 | `WormCrawler-Tray` | logged-in user | at logon | tray icon |
 
 Files live in `C:\ProgramData\WormCrawler`; the log is `wormcrawler.log`.
 
 ### Uninstall
-`3_Dezinstaleaza.cmd` (asks for the PIN).
+`3_Uninstall.cmd` (asks for the PIN).
 
 ---
 

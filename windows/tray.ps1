@@ -1,10 +1,11 @@
-﻿# Iconita Worm-Crawler Defender in system tray (porneste la logarea fiecarui utilizator)
+﻿# Worm-Crawler Defender - system tray icon (starts at each user's logon)
 # made by REDAOT
+$WcdVersion = 'v1.0.0'
 $ErrorActionPreference = 'SilentlyContinue'
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
 
-# o singura iconita per utilizator
+# only one icon per user
 $created = $false
 $mutex = New-Object System.Threading.Mutex($true, "Local\WormCrawlerTray_REDAOT", [ref]$created)
 if (-not $created) { exit }
@@ -16,58 +17,58 @@ $icoOk = if (Test-Path "$Dir\wormcrawler.ico") { New-Object System.Drawing.Icon(
 
 $tray = New-Object System.Windows.Forms.NotifyIcon
 $tray.Icon    = $icoOk
-$tray.Text    = 'Worm-Crawler Defender - pornire...'
+$tray.Text    = 'Worm-Crawler Defender - starting...'
 $tray.Visible = $true
 
 function Get-Status {
-    if (Test-Path "$Dir\autorizat.flag") { return 'pauza' }
-    if ((Test-Path $BeatFile) -and (((Get-Date) - (Get-Item $BeatFile).LastWriteTime).TotalSeconds -lt 60)) { return 'activ' }
-    return 'mort'
+    if (Test-Path "$Dir\authorized.flag") { return 'paused' }
+    if ((Test-Path $BeatFile) -and (((Get-Date) - (Get-Item $BeatFile).LastWriteTime).TotalSeconds -lt 60)) { return 'active' }
+    return 'dead'
 }
 
 function Show-Status {
     $st = Get-Status
     $msg = switch ($st) {
-        'activ' { "Worm-Crawler Defender RULEAZA si iti protejeaza PC-ul.`r`n`r`n" }
-        'pauza' { "Protectia e OPRITA (cu PIN-ul tau).`r`nO pornesti din meniu: 'Porneste protectia'.`r`n`r`n" }
-        'mort'  { "ATENTIE: Worm-Crawler Defender NU raspunde!`r`nDaca a fost inchis fara PIN, internetul va fi blocat.`r`nRuleaza din nou 1_Instaleaza.cmd daca problema persista.`r`n`r`n" }
+        'active' { "Worm-Crawler Defender is RUNNING and protecting your PC.`r`n`r`n" }
+        'paused' { "Protection is STOPPED (with your PIN).`r`nStart it from the menu: 'Start Protection'.`r`n`r`n" }
+        'dead'   { "WARNING: Worm-Crawler Defender is NOT responding!`r`nIf it was closed without the PIN, the internet will be blocked.`r`nRun 1_Install.cmd again if the problem persists.`r`n`r`n" }
     }
-    if (Test-Path "$Dir\blocare.flag") { $msg += "INTERNETUL E BLOCAT. Il repornesti cu PIN-ul: 'Reporneste internetul'.`r`n`r`n" }
-    $msg += "Monitorizeaza:`r`n - excluderi noi in Windows Defender`r`n - oprirea protectiei in timp real`r`n - PowerShell cu comenzi ascunse`r`n - inchiderea fortata a protectiei (fara PIN)`r`n`r`nmade by REDAOT"
-    $icon = if ($st -eq 'activ') { 'Information' } else { 'Warning' }
-    [void][System.Windows.Forms.MessageBox]::Show($msg, 'Worm-Crawler Defender  |  made by REDAOT', 'OK', $icon)
+    if (Test-Path "$Dir\blocked.flag") { $msg += "THE INTERNET IS BLOCKED. Unlock it with your PIN: 'Unlock Internet'.`r`n`r`n" }
+    $msg += "Monitors:`r`n - new exclusions in Windows Defender`r`n - real-time protection being turned off`r`n - PowerShell with hidden commands`r`n - reading of browser cookies/credentials`r`n - forced shutdown of the protection (without PIN)`r`n`r`nmade by REDAOT  -  $WcdVersion"
+    $icon = if ($st -eq 'active') { 'Information' } else { 'Warning' }
+    [void][System.Windows.Forms.MessageBox]::Show($msg, "Worm-Crawler Defender $WcdVersion  |  made by REDAOT", 'OK', $icon)
 }
 
 $menu = New-Object System.Windows.Forms.ContextMenuStrip
-$hdr = $menu.Items.Add('Worm-Crawler Defender  -  made by REDAOT'); $hdr.Enabled = $false
+$hdr = $menu.Items.Add("Worm-Crawler Defender $WcdVersion  -  made by REDAOT"); $hdr.Enabled = $false
 [void]$menu.Items.Add('-')
-$menu.Items.Add('Stare').Add_Click({ Show-Status })
-$menu.Items.Add('Deschide jurnalul').Add_Click({ Start-Process notepad.exe "$Dir\wormcrawler.log" })
-$menu.Items.Add('Reporneste internetul (PIN)').Add_Click({ Start-Process "$Dir\reporneste_internet.cmd" })
+$menu.Items.Add('Status').Add_Click({ Show-Status })
+$menu.Items.Add('Open log').Add_Click({ Start-Process notepad.exe "$Dir\wormcrawler.log" })
+$menu.Items.Add('Unlock Internet (PIN)').Add_Click({ Start-Process "$Dir\unlock-internet.cmd" })
 [void]$menu.Items.Add('-')
-$menu.Items.Add('Opreste protectia (PIN)').Add_Click({ Start-Process "$Dir\opreste_protectia.cmd" })
-$menu.Items.Add('Porneste protectia').Add_Click({ Start-Process "$Dir\porneste_protectia.cmd" })
-$menu.Items.Add('Schimba PIN-ul').Add_Click({ Start-Process "$Dir\schimba_pin.cmd" })
+$menu.Items.Add('Stop Protection (PIN)').Add_Click({ Start-Process "$Dir\stop-protection.cmd" })
+$menu.Items.Add('Start Protection').Add_Click({ Start-Process "$Dir\start-protection.cmd" })
+$menu.Items.Add('Change PIN').Add_Click({ Start-Process "$Dir\change-pin.cmd" })
 $tray.ContextMenuStrip = $menu
 $tray.Add_DoubleClick({ Show-Status })
 
-# actualizeaza starea la fiecare 15 secunde
+# refresh the state every 15 seconds
 $timer = New-Object System.Windows.Forms.Timer
 $timer.Interval = 15000
 $update = {
     $st = Get-Status
-    $blk = Test-Path "$Dir\blocare.flag"
-    if ($st -eq 'activ' -and -not $blk) {
-        $tray.Text = 'Worm-Crawler Defender - ACTIV (made by REDAOT)'
+    $blk = Test-Path "$Dir\blocked.flag"
+    if ($st -eq 'active' -and -not $blk) {
+        $tray.Text = "Worm-Crawler Defender - ACTIVE ($WcdVersion)"
         $tray.Icon = $icoOk
-    } elseif ($st -eq 'activ' -and $blk) {
-        $tray.Text = 'Worm-Crawler Defender - INTERNET BLOCAT (PIN)'
+    } elseif ($st -eq 'active' -and $blk) {
+        $tray.Text = 'Worm-Crawler Defender - INTERNET BLOCKED (PIN)'
         $tray.Icon = [System.Drawing.SystemIcons]::Error
-    } elseif ($st -eq 'pauza') {
-        $tray.Text = 'Worm-Crawler Defender - OPRIT cu PIN'
+    } elseif ($st -eq 'paused') {
+        $tray.Text = 'Worm-Crawler Defender - STOPPED with PIN'
         $tray.Icon = [System.Drawing.SystemIcons]::Information
     } else {
-        $tray.Text = 'Worm-Crawler Defender - NU RASPUNDE!'
+        $tray.Text = 'Worm-Crawler Defender - NOT RESPONDING!'
         $tray.Icon = [System.Drawing.SystemIcons]::Warning
     }
 }

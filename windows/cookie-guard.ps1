@@ -1,9 +1,9 @@
-﻿# Worm-Crawler Defender - paza pentru cookie-uri/parole din browsere (made by REDAOT)
-# Pune un AUDIT (SACL) pe fisierele secrete ale browserelor. Cand un alt proces decat
-# browserul le citeste, Windows scrie evenimentul 4663 in jurnalul Security, pe care
-# paza principala il urmareste si taie internetul.
+﻿# Worm-Crawler Defender - browser cookie/credential guard (made by REDAOT)
+# Places an AUDIT (SACL) on the browsers' secret files. When a process other than
+# the browser reads one of them, Windows writes event 4663 to the Security log,
+# which the main guard watches and then cuts the internet.
 
-# Adauga fisierele secrete dintr-un folder de profil Chromium (User Data sau profil Opera).
+# Add the secret files from a Chromium profile folder (User Data or an Opera profile).
 function Add-ChromiumSecrets([string]$udPath, $list) {
     foreach ($leaf in @('Local State', 'Network\Cookies', 'Cookies', 'Login Data')) {
         $p = Join-Path $udPath $leaf; if (Test-Path $p) { $list.Add($p) }
@@ -14,7 +14,7 @@ function Add-ChromiumSecrets([string]$udPath, $list) {
         }
     }
 }
-# Adauga fisierele secrete dintr-un folder "Profiles" al familiei Mozilla.
+# Add the secret files from a Mozilla-family "Profiles" folder.
 function Add-MozillaSecrets([string]$profilesPath, $list) {
     foreach ($prof in (Get-ChildItem $profilesPath -Directory -ErrorAction SilentlyContinue)) {
         foreach ($leaf in @('cookies.sqlite', 'logins.json', 'key4.db')) {
@@ -23,19 +23,19 @@ function Add-MozillaSecrets([string]$profilesPath, $list) {
     }
 }
 
-# Lista fisierelor secrete existente, pentru toate conturile de pe PC.
-# FAILSAFE: nu se bazeaza pe o lista fixa de browsere, ci descopera profilurile
-# dupa STRUCTURA (foldere "User Data" / "Profiles" / profil Opera) parcurgand
-# tot ce e in AppData\Local si AppData\Roaming. Acopera orice browser uzual
-# (Chrome, Edge, Brave, Opera/GX, Vivaldi, Yandex, Firefox si forkuri ca
-# LibreWolf/Waterfox/Pale Moon, Thunderbird), instalat pe sistem SAU doar sub user.
+# List the existing secret files for every account on the PC.
+# FAILSAFE: does not rely on a fixed list of browsers; it discovers profiles by
+# STRUCTURE ("User Data" / "Profiles" folders / Opera-style profile) by walking
+# everything in AppData\Local and AppData\Roaming. Covers any common browser
+# (Chrome, Edge, Brave, Opera/GX, Vivaldi, Yandex, Firefox and forks such as
+# LibreWolf/Waterfox/Pale Moon, Thunderbird), installed system-wide OR per-user.
 function Get-BrowserSecretFiles {
     $files = New-Object System.Collections.Generic.List[string]
     foreach ($u in (Get-ChildItem 'C:\Users' -Directory -ErrorAction SilentlyContinue)) {
         foreach ($root in @((Join-Path $u.FullName 'AppData\Local'), (Join-Path $u.FullName 'AppData\Roaming'))) {
             if (-not (Test-Path $root)) { continue }
             foreach ($vendor in (Get-ChildItem $root -Directory -ErrorAction SilentlyContinue)) {
-                # vendor\User Data   si   vendor\Profiles
+                # vendor\User Data   and   vendor\Profiles
                 $ud = Join-Path $vendor.FullName 'User Data'; if (Test-Path $ud) { Add-ChromiumSecrets $ud $files }
                 $pf = Join-Path $vendor.FullName 'Profiles';  if (Test-Path $pf) { Add-MozillaSecrets  $pf $files }
                 foreach ($sub in (Get-ChildItem $vendor.FullName -Directory -ErrorAction SilentlyContinue)) {
@@ -43,7 +43,7 @@ function Get-BrowserSecretFiles {
                     $ud2 = Join-Path $sub.FullName 'User Data'; if (Test-Path $ud2) { Add-ChromiumSecrets $ud2 $files }
                     # vendor\<Browser>\Profiles    (Firefox = Mozilla\Firefox\Profiles)
                     $pf2 = Join-Path $sub.FullName 'Profiles';  if (Test-Path $pf2) { Add-MozillaSecrets  $pf2 $files }
-                    # profil tip Opera: folderul contine direct Local State / Cookies
+                    # Opera-style profile: the folder holds Local State / Cookies directly
                     if ((Test-Path (Join-Path $sub.FullName 'Local State')) -or
                         (Test-Path (Join-Path $sub.FullName 'Cookies')) -or
                         (Test-Path (Join-Path $sub.FullName 'Network\Cookies'))) {
@@ -56,11 +56,11 @@ function Get-BrowserSecretFiles {
     return ($files | Sort-Object -Unique)
 }
 
-# Activeaza auditul de acces la fisiere si pune SACL pe fisierele secrete.
+# Enable file-access auditing and put a SACL on the secret files.
 function Set-CookieAudit {
-    # Audit "File System" (object access), GUID independent de limba
+    # Audit "File System" (object access), GUID is language-independent
     auditpol.exe /set /subcategory:"{0CCE921D-69AE-11D9-BED3-505054503030}" /success:enable | Out-Null
-    # jurnal Security mai mare, ca sa nu se piarda evenimentele (64 MB)
+    # larger Security log so events are not lost (64 MB)
     wevtutil.exe sl Security /ms:67108864 2>$null | Out-Null
 
     $everyone = New-Object System.Security.Principal.SecurityIdentifier('S-1-1-0')
@@ -81,7 +81,7 @@ function Set-CookieAudit {
     return $n
 }
 
-# Lista proceselor carora li se permite accesul (browserele insele + sistem).
+# Processes allowed to read the files (the browsers themselves + system).
 $script:BrowserWhitelist = @(
     'chrome.exe', 'msedge.exe', 'msedgewebview2.exe', 'brave.exe', 'firefox.exe',
     'opera.exe', 'opera_gx.exe', 'vivaldi.exe', 'chromium.exe', 'browser.exe',
@@ -90,10 +90,9 @@ $script:BrowserWhitelist = @(
     'searchprotocolhost.exe', 'searchindexer.exe', 'msmpeng.exe', 'system'
 )
 
-# Regex pentru fisierele secrete (cale Windows).
-# FAILSAFE prin semnatura fisierului:
-#  - Chromium: orice ...\User Data\...\(Network\)?Cookies / Login Data / Local State
-#    (Electron-urile - Discord/Slack/VSCode - NU folosesc "User Data", deci nu dau alarme false)
-#  - Opera: profilul "...\Opera* \ ..." (fara "User Data")
-#  - Mozilla: numele cookies.sqlite / logins.json / key4.db oriunde (sunt unice familiei Mozilla)
+# FAILSAFE by file signature:
+#  - Chromium: any ...\User Data\...\(Network\)?Cookies / Login Data / Local State
+#    (Electron apps - Discord/Slack/VSCode - do NOT use "User Data", so no false alarms)
+#  - Opera: the "...\Opera* \ ..." profile (no "User Data")
+#  - Mozilla: the names cookies.sqlite / logins.json / key4.db anywhere (unique to Mozilla)
 $script:CookieRegex = '(?i)(\\User Data\\[^\\]*\\?(Network\\)?Cookies$)|(\\User Data\\[^\\]*\\?Login Data$)|(\\User Data\\Local State$)|(\\Opera[^\\]*\\(Network\\)?Cookies$)|(\\Opera[^\\]*\\Login Data$)|(\\Opera[^\\]*\\Local State$)|(\\(cookies\.sqlite|logins\.json|key4\.db)$)'

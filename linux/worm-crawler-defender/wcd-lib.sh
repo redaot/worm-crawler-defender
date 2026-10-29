@@ -1,30 +1,32 @@
 #!/usr/bin/env bash
-# Worm-Crawler Defender pentru Linux - biblioteca comuna (made by REDAOT)
-# Functii pentru: log, PIN, blocare/deblocare retea, alerte, baseline persistenta.
+# Worm-Crawler Defender for Linux - shared library (made by REDAOT)
+# Functions for: logging, PIN, network block/restore, alerts, persistence baseline.
 
-# --- cai ---
-PROG_DIR="/opt/worm-crawler-defender"              # programul
-SECURE_DIR="/etc/worm-crawler-defender/secure"     # PIN-ul, separat; supravietuieste stergerii /opt
+WCD_VERSION="v1.0.0"
+
+# --- paths ---
+PROG_DIR="/opt/worm-crawler-defender"              # the program
+SECURE_DIR="/etc/worm-crawler-defender/secure"     # the PIN, separate; survives deletion of /opt
 PIN_FILE="$SECURE_DIR/pin.dat"
 PIN_BAK="$SECURE_DIR/pin.bak"
-VAR_DIR="/var/lib/worm-crawler-defender"           # stare persistenta (supravietuieste reboot)
-RUN_DIR="/run/worm-crawler-defender"               # stare volatila (heartbeat)
+VAR_DIR="/var/lib/worm-crawler-defender"           # persistent state (survives reboot)
+RUN_DIR="/run/worm-crawler-defender"               # volatile state (heartbeat)
 LOG_FILE="/var/log/worm-crawler-defender.log"
-BLOCK_FLAG="$VAR_DIR/blocare.flag"                 # exista cat timp reteaua e blocata, asteptand PIN
-AUTH_FLAG="$VAR_DIR/autorizat.flag"                # exista cat timp protectia e oprita cu PIN
-SAVED_NET="$VAR_DIR/retea_salvata"                 # ce am oprit, ca sa pornesc exact aia
+BLOCK_FLAG="$VAR_DIR/blocked.flag"                 # exists while the network is blocked, waiting for the PIN
+AUTH_FLAG="$VAR_DIR/authorized.flag"               # exists while protection is stopped with the PIN
+SAVED_NET="$VAR_DIR/saved_net"                     # what we disabled, so we re-enable exactly those
 HEARTBEAT="$RUN_DIR/heartbeat"
 
 have() { command -v "$1" >/dev/null 2>&1; }
 
-# fisierele cu cookie-uri/parole ale browserelor (cale completa, orice user)
+# Browser cookie/credential files (full path, any user).
 # FAILSAFE:
-#  - Mozilla (Firefox si forkuri, Thunderbird): numele cookies.sqlite/logins.json/key4.db
-#    oriunde (inclusiv snap/flatpak) - sunt unice familiei Mozilla, deci fara alarme false.
-#  - Chromium: fisierul "Cookies"/"Login Data" sub un folder de browser cunoscut (.config
-#    sau flatpak), ca sa NU dam alarma cand Discord/Slack/VSCode isi citesc propriile cookie-uri.
+#  - Mozilla (Firefox and forks, Thunderbird): the names cookies.sqlite/logins.json/key4.db
+#    anywhere (incl. snap/flatpak) - unique to the Mozilla family, so no false alarms.
+#  - Chromium: a "Cookies"/"Login Data" file under a known browser folder (.config or
+#    flatpak), so we do NOT alarm when Discord/Slack/VSCode read their own cookies.
 WCD_COOKIE_RX='/(cookies\.sqlite|logins\.json|key4\.db)$|/(\.config|\.var/app/[^/]+/config)/(google-chrome|chrome|chromium|BraveSoftware|brave|microsoft-edge|edge|vivaldi|opera|yandex-browser)[^/]*/(.*/)?(Network/)?Cookies$|/(\.config|\.var/app/[^/]+/config)/(google-chrome|chrome|chromium|BraveSoftware|brave|microsoft-edge|edge|vivaldi|opera|yandex-browser)[^/]*/(.*/)?Login Data$'
-# executabilul browserului (procesele lui au voie sa-si citeasca propriile cookie-uri)
+# the browser executable (its processes are allowed to read their own cookies)
 WCD_BROWSER_EXE_RX='(firefox|thunderbird|librewolf|waterfox|palemoon|/chrome|/chromium|chrome-sandbox|/brave|microsoft-edge|/msedge|/opera|vivaldi|yandex)'
 
 wcd_log() {
@@ -38,7 +40,7 @@ wcd_dirs() {
 }
 
 # ===================== PIN =====================
-# Format fisier: algo:salt_hex:hash_hex   (algo = pbkdf2 sau openssl)
+# File format: algo:salt_hex:hash_hex   (algo = pbkdf2 or openssl)
 wcd_hash() {  # $1 pin, $2 salt_hex, $3 algo
     local pin="$1" salt="$2" algo="$3"
     case "$algo" in
@@ -51,7 +53,6 @@ print(hashlib.pbkdf2_hmac('sha256', pin, salt, 100000).hex())
 PY
             ;;
         openssl)
-            # PBKDF2 prin openssl (OpenSSL 3.x). Rezultat hex.
             printf '%s' "$pin" | openssl kdf -keylen 32 -kdfopt digest:SHA256 \
                 -kdfopt pass:"$pin" -kdfopt hexsalt:"$salt" -kdfopt iter:100000 PBKDF2 2>/dev/null \
                 | tr -d ':' | tr 'A-F' 'a-f'
@@ -59,7 +60,7 @@ PY
     esac
 }
 
-wcd_pin_algo() {  # alege algoritmul disponibil
+wcd_pin_algo() {  # pick an available algorithm
     if have python3; then echo pbkdf2
     elif have openssl; then echo openssl
     else echo none; fi
@@ -67,7 +68,7 @@ wcd_pin_algo() {  # alege algoritmul disponibil
 
 wcd_pin_exists() { [ -s "$PIN_FILE" ] || [ -s "$PIN_BAK" ]; }
 
-wcd_pin_restore_copies() {  # reface fisierul lipsa din copie
+wcd_pin_restore_copies() {  # restore the missing file from the backup
     if [ -s "$PIN_FILE" ] && [ ! -s "$PIN_BAK" ]; then cp -f "$PIN_FILE" "$PIN_BAK"; chmod 600 "$PIN_BAK"
     elif [ -s "$PIN_BAK" ] && [ ! -s "$PIN_FILE" ]; then cp -f "$PIN_BAK" "$PIN_FILE"; chmod 600 "$PIN_FILE"; fi
 }
@@ -78,31 +79,37 @@ wcd_pin_line() {
     elif [ -s "$PIN_BAK" ]; then cat "$PIN_BAK"; fi
 }
 
-wcd_pin_set() {  # cere interactiv un PIN nou din 4 cifre si il salveaza
+wcd_pin_read() {  # read a PIN without echo
+    local p
+    read -r -s -p "$1" p; echo >&2
+    printf '%s' "$p"
+}
+
+wcd_pin_set() {  # interactively ask for a new 4-digit PIN and save it
     local algo p1 p2 salt hash
     algo="$(wcd_pin_algo)"
     if [ "$algo" = none ]; then
-        echo "EROARE: lipseste python3 sau openssl pentru a securiza PIN-ul." >&2
+        echo "ERROR: python3 or openssl is required to secure the PIN." >&2
         return 1
     fi
     while true; do
-        read -r -s -p "Alege un PIN din 4 cifre: " p1; echo
-        if ! printf '%s' "$p1" | grep -qE '^[0-9]{4}$'; then echo "PIN-ul trebuie sa aiba exact 4 cifre."; continue; fi
-        read -r -s -p "Repeta PIN-ul: " p2; echo
-        if [ "$p1" != "$p2" ]; then echo "PIN-urile nu coincid. Mai incearca."; continue; fi
+        p1="$(wcd_pin_read 'Choose a 4-digit PIN: ')"
+        if ! printf '%s' "$p1" | grep -qE '^[0-9]{4}$'; then echo "The PIN must be exactly 4 digits."; continue; fi
+        p2="$(wcd_pin_read 'Repeat the PIN: ')"
+        if [ "$p1" != "$p2" ]; then echo "The PINs do not match. Try again."; continue; fi
         break
     done
     salt="$(openssl rand -hex 16 2>/dev/null || head -c16 /dev/urandom | od -An -tx1 | tr -d ' \n')"
     hash="$(wcd_hash "$p1" "$salt" "$algo")"
-    if [ -z "$hash" ]; then echo "EROARE la calculul PIN-ului." >&2; return 1; fi
+    if [ -z "$hash" ]; then echo "ERROR while computing the PIN." >&2; return 1; fi
     mkdir -p "$SECURE_DIR"; chmod 700 "$SECURE_DIR"
     printf '%s:%s:%s\n' "$algo" "$salt" "$hash" > "$PIN_FILE"
     printf '%s:%s:%s\n' "$algo" "$salt" "$hash" > "$PIN_BAK"
     chmod 600 "$PIN_FILE" "$PIN_BAK"
-    echo "[OK] PIN salvat (cu o copie de rezerva). Nu-l uita!"
+    echo "[OK] PIN saved (with a backup copy). Do not forget it!"
 }
 
-wcd_pin_check() {  # $1 pin -> 0 daca e corect
+wcd_pin_check() {  # $1 pin -> 0 if correct
     local line algo salt want got
     line="$(wcd_pin_line)"; [ -z "$line" ] && return 1
     algo="${line%%:*}"; line="${line#*:}"
@@ -111,25 +118,25 @@ wcd_pin_check() {  # $1 pin -> 0 daca e corect
     [ -n "$got" ] && [ "$got" = "$want" ]
 }
 
-# Cere PIN-ul (3 incercari). Intoarce 0 daca e corect.
-wcd_pin_prompt() {  # $1 motiv
-    local motiv="$1" i p
+# Ask for the PIN (3 attempts). Returns 0 if correct.
+wcd_pin_prompt() {  # $1 reason
+    local reason="$1" i p
     if ! wcd_pin_exists; then
-        echo "Nu exista PIN setat. Seteaza unul acum."
+        echo "No PIN is set. Set one now."
         wcd_pin_set; return $?
     fi
     for i in 1 2 3; do
-        read -r -s -p "PIN pentru: $motiv (incercarea $i din 3): " p; echo
+        p="$(wcd_pin_read "PIN for: $reason (attempt $i of 3): ")"
         if wcd_pin_check "$p"; then return 0; fi
-        echo "PIN gresit."
-        wcd_log "PIN GRESIT introdus pentru: $motiv"
+        echo "Wrong PIN."
+        wcd_log "WRONG PIN entered for: $reason"
     done
     sleep 5
     return 1
 }
 
-# ===================== RETEA =====================
-wcd_net_ifaces() {  # placile fizice/virtuale, fara loopback
+# ===================== NETWORK =====================
+wcd_net_ifaces() {  # physical/virtual adapters, without loopback
     local i
     for i in /sys/class/net/*; do
         i="$(basename "$i")"
@@ -139,7 +146,7 @@ wcd_net_ifaces() {  # placile fizice/virtuale, fara loopback
 }
 
 wcd_net_block() {
-    # salveaza o singura data ce era pornit
+    # record what was up, only once
     if [ ! -f "$SAVED_NET" ]; then
         mkdir -p "$VAR_DIR"
         if have nmcli; then
@@ -151,7 +158,7 @@ wcd_net_block() {
             done > "$SAVED_NET"
         fi
     fi
-    # aplica blocarea (idempotent)
+    # apply the block (idempotent)
     if have nmcli && grep -qx nmcli "$SAVED_NET" 2>/dev/null; then
         nmcli networking off 2>/dev/null
     else
@@ -174,17 +181,16 @@ wcd_net_restore() {
     rm -f "$SAVED_NET" "$BLOCK_FLAG"
 }
 
-# ===================== ALERTA PE ECRAN =====================
-wcd_alert_write() {  # $1 titlu, $2 corp -> scrie fisierul de alerta (il citeste GUI-ul)
+# ===================== ON-SCREEN ALERT =====================
+wcd_alert_write() {  # $1 title, $2 body -> write the alert file (the GUI reads it)
     mkdir -p "$VAR_DIR"
-    printf '%s\n%s\n' "$1" "$2" > "$VAR_DIR/alerta.txt"
+    printf '%s\n%s\n' "$1" "$2" > "$VAR_DIR/alert.txt"
 }
 
-wcd_gui_alert() {  # $1 titlu, $2 corp : fereastra la fiecare utilizator grafic + text in terminale
+wcd_gui_alert() {  # $1 title, $2 body : a window for each graphical user + text in terminals
     local title="$1" body="$2"
     printf '%s\n\n%s\n' "$title" "$body" | wall 2>/dev/null
 
-    # sesiuni grafice via loginctl (systemd) sau via 'who'
     local sessions u uid disp
     if have loginctl; then
         sessions="$(loginctl list-sessions --no-legend 2>/dev/null | awk '{print $1}')"
@@ -207,7 +213,7 @@ wcd_gui_alert() {  # $1 titlu, $2 corp : fereastra la fiecare utilizator grafic 
     fi
 }
 
-_wcd_alert_user() {  # $1 user $2 uid $3 display $4 titlu $5 corp
+_wcd_alert_user() {  # $1 user $2 uid $3 display $4 title $5 body
     local u="$1" uid="$2" disp="$3" title="$4" body="$5"
     local bus="unix:path=/run/user/$uid/bus"
     sudo -u "$u" DISPLAY="$disp" DBUS_SESSION_BUS_ADDRESS="$bus" XAUTHORITY="/home/$u/.Xauthority" \
