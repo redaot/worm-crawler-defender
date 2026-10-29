@@ -1,0 +1,86 @@
+WORM-CRAWLER DEFENDER - paza anti-dropper / anti-stealer
+made by REDAOT
+=========================================
+
+CE FACE
+Ruleaza permanent in fundal (ca SYSTEM, porneste singur cu Windows-ul)
+si OPRESTE INTERNETUL + afiseaza o alerta cand vede:
+  1. o EXCLUDERE noua adaugata in Windows Defender
+  2. protectia in timp real din Defender OPRITA
+  3. PowerShell pornit cu o comanda ASCUNSA (-EncodedCommand),
+     exact ce a facut installer-ul fals in sandbox
+  4. un alt program decat browserul CITESTE cookie-urile/parolele din
+     browser (Chrome/Edge/Brave/Firefox etc.)
+
+DETECTAREA ACCESULUI LA COOKIE-URI (semnalul 4)
+  Programul pune un AUDIT pe fisierele secrete ale browserelor (Cookies,
+  Login Data, Local State, cookies.sqlite, logins.json, key4.db). Cand un
+  proces care NU e browserul le citeste, taie internetul.
+  IMPORTANT: citirea unui fisier local e aproape instantanee, deci stealer-ul
+  poate avea deja datele in memorie. Ce oprim SIGUR e TRIMITEREA lor (pasul
+  mai lent: conectare + upload). Reduce mult riscul, dar nu il face zero -
+  pentru asta ar trebui un driver de kernel / EDR adevarat.
+
+PIN DIN 4 CIFRE
+  La prima instalare alegi un PIN din 4 cifre. Fara el NU poti:
+    - opri protectia
+    - reporni internetul dupa o alerta
+    - dezinstala sau reinstala programul
+  Daca protectia e inchisa FORTAT (fara PIN), in cel mult un minut
+  internetul e BLOCAT si ramane blocat pana introduci PIN-ul. Daca cineva
+  il porneste la loc din Setari, e oprit din nou.
+  PIN-ul se schimba din iconita: "Schimba PIN-ul".
+  Ai uitat PIN-ul? Porneste Windows in Safe Mode, sterge fisierul
+  C:\ProgramData\WormCrawler\pin.dat si reporneste normal; la urmatoarea
+  actiune care cere PIN ti se cere sa alegi unul nou.
+
+INSTALARE
+  1. Dezarhiveaza folderul (de ex. pe Desktop).
+  2. Dublu-click pe 1_Instaleaza.cmd -> accepta cererea de Administrator.
+  3. Ruleaza 2_Test.cmd ca sa verifici ca merge
+     (comanda de test e inofensiva; internetul se va opri si apare alerta).
+  4. Reporneste internetul (cu PIN-ul) cu "Worm-Crawler Defender - Reporneste internetul" de pe Desktop.
+  Dupa instalare poti sterge folderul dezarhivat; Worm-Crawler Defender ramane in
+  C:\ProgramData\WormCrawler.
+
+PORNIRE AUTOMATA SI VERIFICARE
+  - Worm-Crawler Defender porneste singur la fiecare pornire a PC-ului si se reporneste
+    daca se opreste.
+  - In plus, "WormCrawler-Verificare" verifica la logare si la fiecare minut
+    daca protectia ruleaza. Daca a fost inchisa FARA PIN, blocheaza internetul,
+    incearca s-o reporneasca si iti afiseaza o FEREASTRA pe ecran:
+      * "OPRIT FARA PIN - INTERNET BLOCAT" -> protectia a fost repornita;
+        daca nu ai fost tu, e suspect. Internetul il repornesti cu PIN-ul.
+      * "NU RULEAZA - INTERNET BLOCAT" -> repornirea n-a reusit; ruleaza din
+        nou 1_Instaleaza.cmd.
+  - Paza e reciproca: daca verificarea e stearsa sau dezactivata, protectia
+    principala blocheaza si ea internetul.
+
+ICONITA IN SYSTEM TRAY
+  Langa ceas apare iconita Worm-Crawler Defender. Click dreapta: Stare, Jurnal,
+  Reporneste internetul (PIN), Opreste protectia (PIN), Porneste protectia,
+  Schimba PIN-ul. Daca Worm-Crawler Defender nu raspunde, iconita devine
+  un triunghi galben de avertizare.
+
+DUPA O ALERTA
+  - Daca NU stii de ce a aparut: lasa internetul oprit, inchide programul
+    pe care tocmai l-ai rulat si scaneaza PC-ul.
+  - Daca ai fost TU (ai adaugat singur o excludere in Defender):
+    "Worm-Crawler Defender - Reporneste internetul" de pe Desktop + PIN-ul.
+  - Jurnalul cu detalii: C:\ProgramData\WormCrawler\wormcrawler.log
+    (include si comanda PowerShell decodificata, daca a fost una)
+
+DEZINSTALARE
+  3_Dezinstaleaza.cmd (cere PIN-ul)
+
+LIMITE (important)
+  - Orice excludere adaugata in Defender, inclusiv de tine, declanseaza
+    alerta. E intentionat: e exact momentul in care trebuie sa te opresti.
+  - Unele programe legitime (rar) folosesc PowerShell codificat; atunci
+    vei primi o alerta falsa. Verifica in jurnal ce comanda a fost.
+  - Daca rulezi un malware CU DREPTURI DE ADMINISTRATOR, acesta poate in
+    teorie sa opreasca si Worm-Crawler Defender. Daca il opreste fortat, internetul se blocheaza;
+    daca ii sterge toate componentele, nu mai are cine sa reactioneze.
+    Programul prinde metodele obisnuite folosite de droppere, dar nu inlocuieste antivirusul si nici prudenta.
+  - Detectia are loc in ~2 secunde. Un stealer foarte rapid poate apuca sa
+    trimita ceva inainte; Worm-Crawler Defender reduce paguba, nu o garanteaza la zero.

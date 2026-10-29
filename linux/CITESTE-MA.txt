@@ -1,0 +1,84 @@
+WORM-CRAWLER DEFENDER pentru Linux
+made by REDAOT
+==================================================
+
+CE FACE
+Ruleaza permanent in fundal (ca serviciu root, porneste cu sistemul) si
+BLOCHEAZA internetul + afiseaza o alerta pe ecran cand detecteaza:
+  1. un proces de tip "descarca-si-ruleaza"  ( curl|bash, wget|sh,
+     base64 -d|bash, python -c cu exec/base64, cod base64 lung etc. )
+  2. un executabil pornit din /tmp, /dev/shm sau /var/tmp
+     (locul tipic unde un dropper isi lasa payload-ul)
+  3. o persistenta noua adaugata: cron, serviciu systemd sau autostart
+  4. un alt proces decat browserul deschide cookie-urile/parolele din
+     browser (Firefox: cookies.sqlite/logins.json/key4.db;
+     Chrome/Chromium/Brave/Edge/Opera/Vivaldi: Cookies / Login Data)
+  5. inchiderea fortata a protectiei (fara PIN)
+Internetul ramane blocat pana introduci PIN-ul tau din 4 cifre.
+
+DETECTAREA ACCESULUI LA COOKIE-URI (semnalul 4)
+  La fiecare ciclu, paza verifica (prin /proc/*/fd) daca un proces care NU
+  e browserul tine deschis un fisier de cookie-uri/parole. Daca da, taie
+  internetul. IMPORTANT: citirea locala e aproape instantanee, deci ce oprim
+  SIGUR e TRIMITEREA datelor, nu neaparat citirea lor. Reduce mult riscul,
+  dar nu il face zero (pentru asta ar trebui fanotify/EDR la nivel de kernel).
+
+COMPATIBILITATE
+  - Orice distributie cu systemd: Ubuntu, Debian, Linux Mint, Fedora,
+    Arch, Manjaro, openSUSE, Pop!_OS etc. (detectat automat).
+  - Fara systemd: pornire prin cron @reboot + supervizor (automat).
+  - Are nevoie de python3 SAU openssl (pentru PIN) - exista pe aproape
+    orice distro. Pentru alerte grafice foloseste zenity/kdialog/
+    notify-send/xmessage daca exista; altfel alerta apare in terminal.
+
+INSTALARE
+  1. Dezarhiveaza folderul.
+  2. In terminal, in folder:   sudo ./install.sh
+     (daca uiti 'sudo', scriptul il cere singur)
+  3. Alegi un PIN din 4 cifre.
+  4. Testeaza:   sudo wcd-test
+     (comanda de test e inofensiva; internetul se blocheaza si apare alerta)
+  5. Deblochezi internetul:   sudo wcd-unlock   (introduci PIN-ul)
+
+COMENZI
+  sudo wcd-unlock              deblocheaza internetul dupa o alerta (cere PIN)
+  wcd-protect status           arata starea (protectie + internet)
+  sudo wcd-protect stop        opreste protectia (cere PIN)
+  sudo wcd-protect start       porneste protectia la loc
+  sudo wcd-protect pin         schimba PIN-ul (cere PIN-ul vechi)
+
+PIN-ul DIN 4 CIFRE
+  - Fara el nu poti debloca internetul, opri protectia sau dezinstala.
+  - E salvat doar ca amprenta criptografica (PBKDF2, 100.000 iteratii),
+    intr-un folder SEPARAT de program:  /etc/worm-crawler-defender/secure
+    (doar root il poate citi). Asa supravietuieste stergerii folderului
+    programului (/opt/worm-crawler-defender). Are si o copie de rezerva
+    (pin.bak): daca unul e sters, celalalt il reface.
+  - Inchidere fortata fara PIN -> in cel mult un minut watchdog-ul
+    blocheaza internetul, reporneste paza si te anunta cu o fereastra.
+  - Paza e reciproca: daca watchdog-ul e dezactivat, paza principala
+    blocheaza si ea internetul.
+  - Ai uitat PIN-ul? Ca root:  sudo rm -rf /etc/worm-crawler-defender
+    apoi ruleaza din nou  sudo ./install.sh  si alegi unul nou.
+
+UNDE SUNT LUCRURILE
+  /opt/worm-crawler-defender          scripturile
+  /etc/worm-crawler-defender/secure   PIN-ul (pin.dat, pin.bak) - doar root
+  /var/lib/worm-crawler-defender      stare (blocare.flag, retea_salvata...)
+  /var/log/worm-crawler-defender.log  jurnalul
+  systemd: worm-crawler-defender.service + wcd-watchdog.timer
+
+DEZINSTALARE
+  sudo ./uninstall.sh     (cere PIN-ul)
+
+LIMITE (important)
+  - Scanarea proceselor se face la ~2 secunde; un program foarte rapid
+    poate apuca sa trimita ceva inainte. Programul reduce paguba, nu o
+    elimina complet.
+  - Un atacator deja ROOT poate sterge toate componentele deodata; atunci
+    nu mai ramane nimic care sa reactioneze. Daca doar opreste protectia,
+    internetul se blocheaza.
+  - Unele comenzi legitime (instalatoare care fac 'curl | bash') pot
+    declansa o alerta falsa. Verifica in jurnal ce comanda a fost.
+  - Nu inlocuieste un antivirus/EDR. E un strat in plus + prudenta:
+    nu rula fisiere primite in mesaje private.
