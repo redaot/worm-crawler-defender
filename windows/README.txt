@@ -79,5 +79,11 @@ LIMITS (important)
     at once, nothing is left to react.
   - Detection runs on a ~2-second cycle. A very fast stealer may send
     something first; it reduces damage, it does not guarantee zero.
+  - KEYLOGGERS are NOT detected on Windows. Reliable keylogger detection
+    needs ETW or a kernel driver / EDR, which is out of scope for a script
+    tool. The tool still helps against stealers that bundle a keylogger
+    (it catches the dropper / cookie theft and cuts the network before the
+    captured data can be sent). The Linux build has a best-effort keyboard
+    (/dev/input) signal; the Windows build does not.
   - Not an antivirus/EDR. The best protection is still not running files
     received in private messages, whoever the sender appears to be.

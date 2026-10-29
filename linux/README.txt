@@ -13,8 +13,18 @@ system) and BLOCKS THE INTERNET + shows an alert when it detects:
   4. a non-browser process opening the browser cookies/credentials
      (Firefox: cookies.sqlite/logins.json/key4.db;
       Chrome/Chromium/Brave/Edge/Opera/Vivaldi: Cookies / Login Data)
-  5. the protection being force-closed (without the PIN)
+  5. a non-input process reading the keyboard devices /dev/input/* (keylogger)
+  6. the protection being force-closed (without the PIN)
 The internet stays blocked until you enter your 4-digit PIN.
+
+KEYLOGGER DETECTION (signal 5)
+  A keylogger on Linux reads the keyboard directly from /dev/input/event*.
+  The guard alarms when a process that is NOT a display server / compositor /
+  input daemon (Xorg, Wayland compositors, libinput, logind, input remappers,
+  gaming tools are whitelisted) holds a keyboard device open. Note: this stops
+  the SENDING of captured keystrokes, not the capture itself. If you use an
+  uncommon input tool and get a false alert, tell us its process path to
+  whitelist it.
 
 BROWSER COOKIE/CREDENTIAL DETECTION (signal 4)
   Every cycle the guard checks (via /proc/*/fd) whether a process that is

@@ -29,6 +29,13 @@ WCD_COOKIE_RX='/(cookies\.sqlite|logins\.json|key4\.db)$|/(\.config|\.var/app/[^
 # the browser executable (its processes are allowed to read their own cookies)
 WCD_BROWSER_EXE_RX='(firefox|thunderbird|librewolf|waterfox|palemoon|/chrome|/chromium|chrome-sandbox|/brave|microsoft-edge|/msedge|/opera|vivaldi|yandex)'
 
+# keyboard input devices (a keylogger reads these directly)
+WCD_INPUT_RX='^/dev/input/(event|by-id/|by-path/)'
+# programs legitimately allowed to read input (display servers, compositors,
+# input daemons, gaming). A process reading /dev/input that is NOT one of these
+# is a classic Linux keylogger pattern.
+WCD_INPUT_OK_RX='(/Xorg$|/X$|Xwayland|gnome-shell|/kwin|mutter|/sway$|Hyprland|hyprland|/weston|wayfire|labwc|cosmic-comp|gamescope|plymouthd|systemd-logind|systemd-udevd|/udevd|ibus-|fcitx|libinput|/steam|steamwebhelper|/evsieve|/keyd$|/kanata|/interception|input-remapper|/ydotoold|/wev$)'
+
 wcd_log() {
     mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null
     printf '%s  %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*" >> "$LOG_FILE" 2>/dev/null

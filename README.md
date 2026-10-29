@@ -38,7 +38,8 @@ reacts by killing network connectivity so stolen data cannot be uploaded.
 | 3 | **Suspicious execution location** | — | A binary running from `/tmp`, `/dev/shm`, `/var/tmp` |
 | 4 | **New persistence added** | (covered by exclusion/autostart audit) | New cron job, systemd unit, or autostart entry |
 | 5 | **Browser cookie/credential theft** | A non-browser process **reads** `Cookies`, `Login Data`, `Local State`, `cookies.sqlite`, `logins.json`, `key4.db` | Same, detected via open file descriptors |
-| 6 | **Self-tampering** | Protection closed/killed without PIN; watchdog deleted/disabled | Same |
+| 6 | **Keylogger** | *Not detected* — needs ETW / a kernel driver (out of scope) | A non-input process reading the keyboard devices `/dev/input/event*` (best-effort) |
+| 7 | **Self-tampering** | Protection closed/killed without PIN; watchdog deleted/disabled | Same |
 
 When any signal fires, the tool:
 
@@ -191,6 +192,10 @@ sudo ./uninstall.sh        # asks for the PIN
   leaving nothing to react. If it merely stops the protection, the network is blocked.
 - **False positives happen.** Some legitimate installers use `curl | bash`; some
   tools legitimately touch browser files. Check the log to see what triggered an alert.
+- **Keyloggers:** on **Linux** there is a best-effort signal (a non-input process
+  reading `/dev/input/event*`); on **Windows** keylogger detection is **not in scope**
+  (it needs ETW or a kernel driver / EDR). In both cases what is reliably stopped is
+  the *sending* of captured keystrokes, not the capture itself.
 - **Not an antivirus/EDR.** The strongest protection is still not running files sent
   to you in private messages, whoever the sender appears to be.
 

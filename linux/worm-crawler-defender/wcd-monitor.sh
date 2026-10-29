@@ -6,6 +6,7 @@
 #   2. an executable started from /tmp, /dev/shm or /var/tmp (typical dropper staging)
 #   3. new persistence added (cron, systemd unit, autostart)
 #   4. a non-browser process opening the browser cookies/credentials
+#   5. a non-input process reading the keyboard devices (/dev/input/*) - keylogger
 # The block stays active until the PIN is entered.
 set -u
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -87,14 +88,23 @@ scan_processes() {
             raise_alarm "Dropper-style command (download-and-run or encoded code)." "PID $pid: ${cmd:0:300}"
             return
         fi
-        # c) a non-browser process has a cookie/credential file open
+        # c) open file descriptors: cookie/credential files, or keyboard devices
         if [ -d "/proc/$pid/fd" ]; then
             for fd in /proc/"$pid"/fd/*; do
                 tgt="$(readlink "$fd" 2>/dev/null)" || continue
+                # c1) a non-browser process has a cookie/credential file open
                 if printf '%s' "$tgt" | grep -qE "$WCD_COOKIE_RX"; then
                     raise_alarm "A program opened the browser COOKIES / credentials." "PID $pid ($exe)
 File: $tgt"
                     return
+                fi
+                # c2) a non-input process reading keyboard devices = possible keylogger
+                if printf '%s' "$tgt" | grep -qE "$WCD_INPUT_RX"; then
+                    if [ -n "$exe" ] && ! printf '%s' "$exe" | grep -qiE "$WCD_INPUT_OK_RX"; then
+                        raise_alarm "A program is reading the KEYBOARD input (possible keylogger)." "PID $pid ($exe)
+Device: $tgt"
+                        return
+                    fi
                 fi
             done
         fi

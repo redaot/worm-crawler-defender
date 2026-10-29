@@ -23,6 +23,9 @@ PIN-locked alert when a program behaves like a dropper or an infostealer.
   - Detects binaries executing from `/tmp`, `/dev/shm`, `/var/tmp`.
   - Detects new persistence (cron, systemd unit, autostart).
   - **Browser cookie/credential theft detection** via `/proc/*/fd`.
+  - **Keylogger signal (best-effort)**: alarms when a non-input process reads the
+    keyboard devices `/dev/input/event*` (display servers, compositors, input daemons
+    and remappers are whitelisted).
   - Auto-detects the distribution and init system during install.
 - **Failsafe browser coverage**: cookie/credential files are recognised by
   structure and filename (Chromium `User Data`, Mozilla `cookies.sqlite`/
@@ -46,6 +49,9 @@ PIN-locked alert when a program behaves like a dropper or an infostealer.
 - Cutting the network reliably stops *exfiltration*; it cannot guarantee the local
   *read* was prevented. Preventing the read itself needs a kernel driver / EDR.
 - A root/admin-level attacker that deletes all components at once leaves nothing to react.
+- Keyloggers: Linux has a best-effort `/dev/input` signal; on Windows, keylogger
+  detection is out of scope (needs ETW or a kernel driver / EDR). In both cases the
+  tool stops the sending of captured keystrokes, not the capture itself.
 - A very exotic browser whose process is not in the trusted list may cause a false
   positive when it reads its own cookies.
 

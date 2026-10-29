@@ -40,7 +40,8 @@ viruși cunoscuți. Urmărește **comportamentul** comun dropperelor și stealer
 | 3 | **Locație suspectă de execuție** | — | Un binar care rulează din `/tmp`, `/dev/shm`, `/var/tmp` |
 | 4 | **Persistență nouă adăugată** | (acoperit de auditul excluderilor/autostart) | Cron nou, serviciu systemd, sau autostart |
 | 5 | **Furt de cookie-uri/parole din browser** | Un proces non-browser **citește** `Cookies`, `Login Data`, `Local State`, `cookies.sqlite`, `logins.json`, `key4.db` | La fel, detectat prin descriptorii de fișiere deschiși |
-| 6 | **Auto-sabotaj** | Protecția închisă/omorâtă fără PIN; watchdog șters/dezactivat | La fel |
+| 6 | **Keylogger** | *Nedetectat* — necesită ETW / driver de kernel (în afara scopului) | Un proces non-input care citește tastatura `/dev/input/event*` (best-effort) |
+| 7 | **Auto-sabotaj** | Protecția închisă/omorâtă fără PIN; watchdog șters/dezactivat | La fel |
 
 Când se declanșează un semnal, programul:
 
@@ -205,6 +206,10 @@ sudo ./uninstall.sh        # cere PIN-ul
 - **Apar și alarme false.** Unele instalatoare legitime folosesc `curl | bash`;
   unele unelte ating legitim fișiere de browser. Verifică jurnalul ca să vezi ce
   a declanșat alerta.
+- **Keyloggere:** pe **Linux** există un semnal best-effort (un proces non-input
+  care citește `/dev/input/event*`); pe **Windows** detectarea keyloggerelor **nu e
+  în scop** (necesită ETW sau un driver de kernel / EDR). În ambele cazuri ce se
+  oprește sigur e *trimiterea* tastelor capturate, nu captarea în sine.
 - **Nu e antivirus/EDR.** Cea mai bună protecție rămâne să nu rulezi fișiere
   primite în mesaje private, oricine ar părea expeditorul.
 
