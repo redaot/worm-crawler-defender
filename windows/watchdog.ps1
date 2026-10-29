@@ -6,7 +6,7 @@
 #    -> shows an on-screen alert WINDOW
 #  made by REDAOT
 # ==========================================================================
-$WcdVersion = 'v1.0.0'
+$WcdVersion = 'v1.1.0'
 $ErrorActionPreference = 'SilentlyContinue'
 $Dir       = 'C:\ProgramData\WormCrawler'
 $BeatFile  = Join-Path $Dir 'heartbeat.txt'

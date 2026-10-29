@@ -1,7 +1,7 @@
 # Worm-Crawler Defender
 
 **O „capcană” comportamentală ușoară împotriva dropperelor și a infostealerelor, pentru Windows și Linux.**
-*made by REDAOT — v1.0.0*
+*made by REDAOT — v1.1.0*
 
 🇬🇧 English version: [README.md](README.md)
 
@@ -37,7 +37,7 @@ viruși cunoscuți. Urmărește **comportamentul** comun dropperelor și stealer
 |---|--------|---------|-------|
 | 1 | **Descarcă-și-rulează / cod ascuns** | PowerShell pornit cu `-EncodedCommand` | `curl\|bash`, `wget\|sh`, `base64 -d\|bash`, `python -c` cu exec/base64, blocuri base64 lungi |
 | 2 | **Manipularea protecției** | O **excludere** nouă în Microsoft Defender; protecția în timp real **oprită** | — |
-| 3 | **Locație suspectă de execuție** | — | Un binar care rulează din `/tmp`, `/dev/shm`, `/var/tmp` |
+| 3 | **Locație suspectă de execuție** | Un program **nesemnat** pornit din `\Temp\` sau `\Downloads\` | Un binar care rulează din `/tmp`, `/dev/shm`, `/var/tmp` |
 | 4 | **Persistență nouă adăugată** | (acoperit de auditul excluderilor/autostart) | Cron nou, serviciu systemd, sau autostart |
 | 5 | **Furt de cookie-uri/parole din browser** | Un proces non-browser **citește** `Cookies`, `Login Data`, `Local State`, `cookies.sqlite`, `logins.json`, `key4.db` | La fel, detectat prin descriptorii de fișiere deschiși |
 | 6 | **Keylogger** | *Nedetectat* — necesită ETW / driver de kernel (în afara scopului) | Un proces non-input care citește tastatura `/dev/input/event*` (best-effort) |

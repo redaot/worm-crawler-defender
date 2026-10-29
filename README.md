@@ -1,7 +1,7 @@
 # Worm-Crawler Defender
 
 **A lightweight behavioural tripwire against droppers and infostealers, for Windows and Linux.**
-*made by REDAOT — v1.0.0*
+*made by REDAOT — v1.1.0*
 
 🇷🇴 Versiunea în română: [README.ro.md](README.ro.md)
 
@@ -35,7 +35,7 @@ reacts by killing network connectivity so stolen data cannot be uploaded.
 |---|--------|---------|-------|
 | 1 | **Download-and-run / obfuscated code** | PowerShell started with `-EncodedCommand` | `curl\|bash`, `wget\|sh`, `base64 -d\|bash`, `python -c` with exec/base64, long base64 blobs |
 | 2 | **Security product tampering** | A new Microsoft Defender **exclusion** added; real-time protection turned **off** | — |
-| 3 | **Suspicious execution location** | — | A binary running from `/tmp`, `/dev/shm`, `/var/tmp` |
+| 3 | **Suspicious execution location** | An **unsigned** program launched from `\Temp\` or `\Downloads\` | A binary running from `/tmp`, `/dev/shm`, `/var/tmp` |
 | 4 | **New persistence added** | (covered by exclusion/autostart audit) | New cron job, systemd unit, or autostart entry |
 | 5 | **Browser cookie/credential theft** | A non-browser process **reads** `Cookies`, `Login Data`, `Local State`, `cookies.sqlite`, `logins.json`, `key4.db` | Same, detected via open file descriptors |
 | 6 | **Keylogger** | *Not detected* — needs ETW / a kernel driver (out of scope) | A non-input process reading the keyboard devices `/dev/input/event*` (best-effort) |

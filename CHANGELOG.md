@@ -4,9 +4,30 @@ All notable changes to Worm-Crawler Defender are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project aims to follow [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] — 2026-10-29
+
+Adds two new behavioural signals and an English-only interface.
+
+### Added
+- **Windows: "suspicious execution location" signal** — alarms when an **unsigned**
+  program is launched from `\Temp\` or `\Downloads\` (the Windows parallel of the
+  Linux `/tmp` staging signal). Uses event 4688 + an Authenticode check.
+- **Linux: keylogger signal (best-effort)** — alarms when a process that is not a
+  display server / compositor / input daemon reads the keyboard devices
+  `/dev/input/event*` (those, plus input remappers and gaming tools, are whitelisted).
+
+### Changed
+- The whole interface (messages, menus, alerts, comments, README) is now in English,
+  with the version shown in the install banner, tray, alert windows and status.
+
+### Notes
+- Keyloggers are still **not detected on Windows** (reliable detection needs ETW or a
+  kernel driver / EDR). The new execution-location signal catches many dropped
+  payloads at launch instead.
+
 ## [1.0.0] — 2026-10-29
 
-First public release. A behavioural tripwire that cuts the network and raises a
+First release. A behavioural tripwire that cuts the network and raises a
 PIN-locked alert when a program behaves like a dropper or an infostealer.
 
 ### Added
@@ -23,9 +44,6 @@ PIN-locked alert when a program behaves like a dropper or an infostealer.
   - Detects binaries executing from `/tmp`, `/dev/shm`, `/var/tmp`.
   - Detects new persistence (cron, systemd unit, autostart).
   - **Browser cookie/credential theft detection** via `/proc/*/fd`.
-  - **Keylogger signal (best-effort)**: alarms when a non-input process reads the
-    keyboard devices `/dev/input/event*` (display servers, compositors, input daemons
-    and remappers are whitelisted).
   - Auto-detects the distribution and init system during install.
 - **Failsafe browser coverage**: cookie/credential files are recognised by
   structure and filename (Chromium `User Data`, Mozilla `cookies.sqlite`/
@@ -55,4 +73,5 @@ PIN-locked alert when a program behaves like a dropper or an infostealer.
 - A very exotic browser whose process is not in the trusted list may cause a false
   positive when it reads its own cookies.
 
+[1.1.0]: https://github.com/REDAOT/worm-crawler-defender/releases/tag/v1.1.0
 [1.0.0]: https://github.com/REDAOT/worm-crawler-defender/releases/tag/v1.0.0

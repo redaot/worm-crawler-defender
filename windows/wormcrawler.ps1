@@ -6,9 +6,10 @@
 #    2. Defender real-time protection turned off
 #    3. PowerShell started with an encoded command (-EncodedCommand)
 #    4. a non-browser process reading the browser cookies/credentials
+#    5. an unsigned program launched from a staging location (Temp / Downloads)
 # ==========================================================================
 
-$WcdVersion = 'v1.0.0'
+$WcdVersion = 'v1.1.0'
 $ErrorActionPreference = 'SilentlyContinue'
 $Dir        = 'C:\ProgramData\WormCrawler'
 . (Join-Path $Dir 'cookie-guard.ps1')
@@ -141,6 +142,16 @@ while ($true) {
         foreach ($e in (Get-NewEventsMulti 'Security' @(4688, 4663) $lastSec $newestSec)) {
             if ($e.Id -eq 4688) {
                 $proc = Get-EventField $e 'NewProcessName'
+                # A2) unsigned executable launched from a staging location (Temp / Downloads)
+                if ($proc -and ($proc -match '(?i)\\(Temp|Downloads)\\') -and ($proc -notmatch '(?i)\\WormCrawler\\')) {
+                    if (Test-Path -LiteralPath $proc) {
+                        $sig = Get-AuthenticodeSignature -LiteralPath $proc -ErrorAction SilentlyContinue
+                        if ($sig -and $sig.Status -ne 'Valid') {
+                            Invoke-Alarm 'An unsigned program was launched from a staging location (Temp/Downloads).' "Program: $proc"
+                        }
+                    }
+                }
+                # A1) encoded PowerShell
                 if ($proc -notmatch '(?i)\\(powershell|pwsh)\.exe$') { continue }
                 $cmd = Get-EventField $e 'CommandLine'
                 if ($cmd -and $cmd -match $encRegex) {

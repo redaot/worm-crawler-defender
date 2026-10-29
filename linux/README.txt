@@ -1,4 +1,4 @@
-WORM-CRAWLER DEFENDER for Linux  -  v1.0.0
+WORM-CRAWLER DEFENDER for Linux  -  v1.1.0
 made by REDAOT
 ==================================================
 

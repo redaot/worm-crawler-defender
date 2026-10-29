@@ -1,4 +1,4 @@
-WORM-CRAWLER DEFENDER (Windows)  -  v1.0.0
+WORM-CRAWLER DEFENDER (Windows)  -  v1.1.0
 made by REDAOT
 ==========================================================
 
@@ -9,6 +9,7 @@ BLOCKS THE INTERNET + shows an alert when it sees:
   2. Defender real-time protection turned OFF
   3. PowerShell started with a HIDDEN command (-EncodedCommand)
   4. a program other than the browser READING the browser cookies/credentials
+  5. an UNSIGNED program launched from a staging location (Temp / Downloads)
 The internet stays blocked until you enter your 4-digit PIN.
 
 BROWSER COOKIE/CREDENTIAL DETECTION (signal 4)

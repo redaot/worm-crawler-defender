@@ -4,7 +4,7 @@
 #   protect.ps1 -Action ChangePin  (asks for the old PIN, then sets a new one)
 #   protect.ps1 -Action Status
 param([ValidateSet('Stop', 'Start', 'ChangePin', 'Status')][string]$Action = 'Status')
-$WcdVersion = 'v1.0.0'
+$WcdVersion = 'v1.1.0'
 $ErrorActionPreference = 'SilentlyContinue'
 $Dir = 'C:\ProgramData\WormCrawler'
 . (Join-Path $Dir 'pin.ps1')

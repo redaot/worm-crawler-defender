@@ -1,6 +1,6 @@
 ﻿# Worm-Crawler Defender - unlock the internet (asks for the PIN)
 # made by REDAOT
-$WcdVersion = 'v1.0.0'
+$WcdVersion = 'v1.1.0'
 $ErrorActionPreference = 'SilentlyContinue'
 $Dir = 'C:\ProgramData\WormCrawler'
 . (Join-Path $Dir 'pin.ps1')

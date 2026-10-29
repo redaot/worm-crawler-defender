@@ -1,6 +1,6 @@
 ﻿# Show the Worm-Crawler Defender alert on the user's screen (started by the WormCrawler-Alert task)
 # made by REDAOT
-$WcdVersion = 'v1.0.0'
+$WcdVersion = 'v1.1.0'
 $ErrorActionPreference = 'SilentlyContinue'
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()

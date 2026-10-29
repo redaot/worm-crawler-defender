@@ -1,5 +1,5 @@
 ﻿# Install Worm-Crawler Defender (runs as Administrator, via 1_Install.cmd)
-$WcdVersion = 'v1.0.0'
+$WcdVersion = 'v1.1.0'
 $ErrorActionPreference = 'Stop'
 $Src = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Dir = 'C:\ProgramData\WormCrawler'

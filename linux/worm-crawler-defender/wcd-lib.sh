@@ -2,7 +2,7 @@
 # Worm-Crawler Defender for Linux - shared library (made by REDAOT)
 # Functions for: logging, PIN, network block/restore, alerts, persistence baseline.
 
-WCD_VERSION="v1.0.0"
+WCD_VERSION="v1.1.0"
 
 # --- paths ---
 PROG_DIR="/opt/worm-crawler-defender"              # the program
